@@ -1,0 +1,18 @@
+{
+  "name": "live-news-map",
+  "version": "1.1.0",
+  "type": "module",
+  "description": "Live News Map with admin, translate-to-English, icons by category, and fast feed caching",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "NODE_ENV=production node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mongoose": "^8.5.2",
+    "morgan": "^1.10.0",
+    "node-cache": "^5.1.2",
+    "rss-parser": "^3.13.0"
+  }
+}
