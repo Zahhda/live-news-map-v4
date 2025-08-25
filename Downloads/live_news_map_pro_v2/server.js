@@ -1,3 +1,4 @@
+// server.js
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -12,18 +13,33 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// Healthcheck (useful for platforms)
+app.get('/health', (_req, res) => res.status(200).send('ok'));
+
 // Logging
-try {
-  app.use(morgan('dev'));
-} catch {}
+try { app.use(morgan('dev')); } catch {}
 
 // Basic middleware
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Mongo
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/live_news_map';
-await mongoose.connect(MONGODB_URI);
+// ---- Mongo (require env var in prod; fail fast if missing/unreachable) ----
+const isProd = process.env.NODE_ENV === 'production';
+let MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+  if (isProd) {
+    console.error('❌ Missing MONGODB_URI env var (required in production).');
+    process.exit(1);
+  } else {
+    // local dev fallback only
+    MONGODB_URI = 'mongodb://127.0.0.1:27017/live_news_map';
+  }
+}
+
+await mongoose.connect(MONGODB_URI, {
+  serverSelectionTimeoutMS: 10000, // fail fast if DB is unreachable
+});
 console.log('✅ MongoDB connected');
 
 // Routes
@@ -39,28 +55,28 @@ app.use('/api/admin', adminRouter);
 
 // Config for client (maps key, other flags)
 app.get('/api/config', (req, res) => {
-  res.json({
-    mapsKey: process.env.GOOGLE_MAPS_API_KEY || '',
-  });
+  res.json({ mapsKey: process.env.GOOGLE_MAPS_API_KEY || '' });
 });
 
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Fallback to index.html for root
-app.get('/', (req, res) => {
+// Pages
+app.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-
-// Admin UI
-app.get('/admin', (req, res) => {
+app.get('/admin', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-const PORT = process.env.PORT || 8080;
-const HOST = process.env.HOST || '127.0.0.1';
+// ---- Networking: bind 0.0.0.0 and Railway PORT ----
+const PORT = process.env.PORT || 8080; // Railway injects PORT
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Live News Map running on http://0.0.0.0:${PORT}`);
+});
 
-app.listen(PORT, HOST, () => {
-  const hostShown = HOST === '0.0.0.0' ? 'localhost' : HOST;
-  console.log(`Live News Map running on http://${hostShown}:${PORT}`);
+// Crash on unhandled promise rejections so platform restarts the app
+process.on('unhandledRejection', (err) => {
+  console.error('UnhandledRejection:', err);
+  process.exit(1);
 });
