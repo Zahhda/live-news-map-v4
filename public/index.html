@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1" name="viewport" />
+  <title>Live News Map</title>
+  <link href="/styles.css" rel="stylesheet" />
+
+  <!-- 🔹 Favicon -->
+  <link rel="icon" type="image/png" href="/img/favicon.png" />
+  <!-- Optional: Apple touch icon (for iOS home screen) -->
+  <link rel="apple-touch-icon" href="/img/favicon.png" />
+</head>
+
+  <body>
+    <!-- Top controls -->
+    <div class="topbar">
+      <div id="topbar-left"
+        style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+
+        <!-- 🔹 Logo -->
+        <a href="/" style="display:flex;align-items:center;gap:6px;text-decoration:none;color:inherit;font-weight:700">
+          <img src="/img/logo.png" alt="Live News Map" style="height:32px;width:auto;border-radius:6px" />
+          <span style="font-size:16px;">Live News Map</span>
+        </a>
+
+        <!-- Country / Region controls -->
+        <select id="countrySelect"></select>
+        <select id="regionSelect"></select>
+        <button id="refreshBtn" title="Refresh current region">Refresh</button>
+        <!-- Language Toggle Switch -->
+        <div class="language-toggle" id="languageToggle">
+          <span class="lang-label" data-lang="en">EN</span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="languageSwitch" />
+            <label for="languageSwitch" class="toggle-slider"></label>
+          </div>
+          <span class="lang-label" data-lang="it">IT</span>
+        </div>
+
+        <!-- Dominant badge -->
+        <span class="token-badge" id="dominantBadge"
+          style="display:inline-flex;align-items:center;justify-content:center;
+                 width:60px;height:24px;padding:0;background:#111;
+                 border:1px solid var(--border);border-radius:8px;
+                 color:var(--muted);font-size:12px;white-space:nowrap;
+                 overflow:hidden;text-overflow:ellipsis;"
+          title="Dominant news category for region">—</span>
+
+        <!-- 3-light severity signal bar -->
+        <div aria-label="Severity signal" class="signalbar"
+          id="severitySignalBar" role="group">
+          <span class="light red" title="Red: war/climate"></span>
+          <span class="light yellow" title="Yellow: culture/society"></span>
+          <span class="light green" title="Green: other"></span>
+        </div>
+      </div>
+
+      <!-- Right auth area -->
+      <div id="authArea" style="margin-left:auto;display:flex;gap:8px;align-items:center"></div>
+    </div>
+
+    <!-- Main layout -->
+    <div class="layout">
+      <div id="map"></div>
+      <div class="sidebar">
+        <div class="section-title">Latest News</div>
+        <div id="newsList"></div>
+      </div>
+    </div>
+
+    <script src="/app.js" type="module"></script>
+
+    <!-- Auth modal -->
+    <div id="authModal"
+      style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);
+             align-items:center;justify-content:center;z-index:60">
+      <div style="background:#0b0b0b;border:1px solid #333;border-radius:12px;
+                  width:420px;max-width:90vw">
+        <div style="display:flex;border-bottom:1px solid #222">
+          <button class="tabBtn" data-tab="login"
+            style="flex:1;padding:10px;background:#111;border:0;color:#ddd;cursor:pointer">Login</button>
+          <button class="tabBtn" data-tab="signup"
+            style="flex:1;padding:10px;background:#0b0b0b;border:0;color:#aaa;cursor:pointer">Sign up</button>
+          <button id="closeAuth"
+            style="padding:10px;border:0;background:transparent;color:#999;font-size:18px">✕</button>
+        </div>
+        <div id="authBody" style="padding:16px"></div>
+      </div>
+    </div>
+
+    <!-- Region Access Request Modal -->
+    <div id="regionRequestModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);align-items:center;justify-content:center;z-index:1000">
+      <div style="background:#0b0b0b;border:1px solid #333;border-radius:12px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto;padding:20px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px">
+          <div style="font-weight:700;font-size:18px">Request Region Access</div>
+          <button id="closeRegionRequestModal" style="margin-left:auto;border:0;background:transparent;font-size:18px;cursor:pointer;color:#999">✕</button>
+        </div>
+        
+        <div style="background:#111;border:1px solid #333;border-radius:8px;padding:12px;margin-bottom:20px">
+          <div style="color:#ff9999;font-size:14px;margin-bottom:8px">📋 Free Trial Information</div>
+          <div style="color:#ddd;font-size:13px;line-height:1.4">
+            • You can request access to up to 3 countries<br>
+            • Each country includes 2 regions<br>
+            • One request per 48 hours<br>
+            • Admin approval required
+          </div>
+        </div>
+
+        <div id="requestStatus" style="margin-bottom:20px"></div>
+
+        <div style="margin-bottom:20px">
+          <label style="display:block;color:#fff;font-weight:600;margin-bottom:8px">Select Countries (Max 3)</label>
+          <div id="countrySelection" style="max-height:200px;overflow-y:auto;border:1px solid #333;border-radius:8px;padding:8px">
+            <!-- Countries will be populated here -->
+          </div>
+          <div id="selectedCount" style="color:#888;font-size:12px;margin-top:4px">Selected: 0/3</div>
+        </div>
+
+        <div style="margin-bottom:20px">
+          <label style="display:block;color:#fff;font-weight:600;margin-bottom:8px">Selected Regions</label>
+          <div id="regionPreview" style="background:#111;border:1px solid #333;border-radius:8px;padding:8px;min-height:60px;color:#888;font-size:13px">
+            Select countries to see available regions
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button id="cancelRegionRequest" class="btn" style="padding:8px 16px;border:1px solid #333;border-radius:8px">Cancel</button>
+          <button id="submitRegionRequest" class="btn" style="padding:8px 16px;border:1px solid #333;border-radius:8px;background:#ff4d4d;color:#fff" disabled>Submit Request</button>
+        </div>
+        
+        <div id="regionRequestErr" style="color:#e66;margin-top:8px"></div>
+      </div>
+    </div>
+
+    <!-- Notification System -->
+    <div id="notificationContainer" style="position:fixed;top:20px;right:20px;z-index:9999;pointer-events:none"></div>
+
+    <!-- Location Sharing Icon -->
+    <div id="locationIcon" style="position:fixed;bottom:20px;left:20px;z-index:9999;width:50px;height:50px;background:linear-gradient(135deg, #333, #555);border:2px solid #666;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.3s ease;box-shadow:0 4px 12px rgba(0,0,0,0.3)" onmouseover="this.style.transform='scale(1.1)';this.style.background='linear-gradient(135deg, #444, #666)';this.style.boxShadow='0 6px 16px rgba(0,0,0,0.4)'" onmouseout="this.style.transform='scale(1)';this.style.background='linear-gradient(135deg, #333, #555)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.3)'">
+      <span style="color:#fff;font-size:20px;font-weight:bold">📍</span>
+    </div>
+
+    <script src="/auth.js"></script>
+  </body>
+</html>
